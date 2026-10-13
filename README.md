@@ -15,69 +15,49 @@
   Footage from the original <a href="https://github.com/maxprokopp/film-space">film-space</a> iOS demo by maxprokopp; Film Space Custom reproduces the same process on Windows and Android.</sub>
 </p>
 
-A browser port of [film-space](https://github.com/maxprokopp/film-space) (an iPhone/ARKit app) for people without a Mac or an iPhone: block a scene with stand-ins, then walk through it with your phone as the camera. Use the recording as a camera-motion reference for AI video tools (e.g. Seedance), import it into Blender, or drive Blender's camera live.
+## Concept
 
-- **Windows PC**: stage the scene and fly the camera with keyboard + mouse.
-- **Android phone** (Chrome + ARCore): walk and turn with the phone, the virtual camera follows (WebXR 6DoF tracking, the ARKit equivalent).
-- **Recording**: `.mp4` (or `.webm`) video + `.json` camera track and stand-ins.
-- **Blender**: import a recording as an animated camera, or drive the active camera in real time from the phone.
+Direct a virtual camera by physically moving your phone. You block a scene with stand-ins, then walk through it holding an Android phone: every step, turn and tilt becomes camera motion, as on a real set. That real, human camera movement drives Blender's camera, live or from a recording, so you can render it with your own characters and environments or use it as a motion reference for AI video tools. It is the [film-space](https://github.com/maxprokopp/film-space) idea (iPhone + ARKit) rebuilt for Windows and Android, with no Mac or iPhone needed.
 
-No build, no install: one HTML page (three.js from a CDN) and two Blender scripts, Python standard library only.
+## What it does
 
-## Run (PC)
+- **Virtual studio** (`index.html`): 20 × 20 m checkerboard floor, 1 m grid, axes and 1.75 m human stand-ins. In **Edit** mode you orbit, zoom and pan the view, add, move, rotate and delete stand-ins, raise or lower the framing, and lock or return to a viewpoint. The layout is saved in the page URL.
+- **Camera mode**: on an Android phone (Chrome + ARCore), WebXR tracks the phone in 6DoF, the same kind of tracking as ARKit, and the virtual camera follows it. Real steps become real distances, and turning or tilting the phone aims the camera. On a PC the same mode uses WASD + mouse. Lenses: 35, 50, 75 and 200 mm (full frame). **Shoulder** places the camera at 1.5 m in the scene centre.
+- **Recording**: REC saves the rendered view as `.mp4` plus a `.json` file with the camera track (time, position, rotation, lens) and the stand-in layout.
+- **Blender import** (`film_space_import.py`): turns the `.json` into an animated camera (location, rotation and focal length on a 36 mm sensor, at the scene's FPS) plus stand-in figures.
+- **Blender live** (`film_space_live.py`): Blender serves the page to the phone and receives its pose about 60 times a second. It applies the pose to the active camera with smoothing, and records keyframes while the timeline plays with Auto Keying on.
 
-```bash
-python -m http.server 8000
-```
+## Setup and use with Blender
 
-Open http://localhost:8000 from this folder.
+Requirements: Windows PC with Blender (tested on 4.5), an Android phone with Chrome and ARCore, and a USB cable with [adb](https://developer.android.com/tools/releases/platform-tools) (USB debugging enabled on the phone).
 
-## Controls
+### Live: the phone is Blender's camera
 
-**Edit**: drag = orbit · wheel/pinch = zoom · right drag / two fingers = pan ·
-drag a figure = move it · tap empty space = deselect · ↺ ↻ (hold) rotate ·
-+ Figure / 🗑 · ▲ ▼ raise/lower framing · 🔒 lock viewpoint · ↩ return to it.
+1. Clone this repo. In Blender go to **Scripting**, open `film_space_live.py` and press **Run Script**. Blender now serves the page on port 8001.
+2. Connect the phone over USB and run:
+   ```bash
+   adb reverse tcp:8001 tcp:8001
+   ```
+3. On the phone, open `http://localhost:8001/?blender` in Chrome.
+4. In Blender, look through the camera (Numpad 0). On the phone, press **Camera**: Blender's active camera starts from its current position and follows your steps and phone movements. The lens button also sets Blender's focal length.
+5. To reposition, move the camera in Blender, then on the phone press **Edit** and **Camera** again: the motion re-anchors to the camera's new pose.
+6. To record a take, enable **Auto Keying** (●) and press **Play**: the motion is written as keyframes.
 
-**Camera**: lens 35 → 50 → 75 → 200 mm (full-frame) · Shoulder = camera at 1.5 m in the scene centre ·
-● REC / ■ STOP · 🔒 / ↩ as above.
-On the PC: click the scene, then WASD move, mouse look, Q/E down/up, Shift faster, Esc releases the mouse.
+Tuning at the top of `film_space_live.py`:
+- `SCALE`: Blender units per real metre walked. Use 10 to cross a large set with a few steps.
+- `SMOOTH`: 0 gives raw tracking; values closer to 1 are smoother but lag more.
 
-The stand-in layout lives in the URL (`#...`): copy the link to open the same scene on another device.
+### From a recording
 
-## Android phone (handheld camera)
+1. Serve the page on the PC with `python -m http.server 8000` in the repo folder.
+2. Run `adb reverse tcp:8000 tcp:8000`, then open `http://localhost:8000` on the phone.
+3. Block the scene, press **Camera** and record with **● REC**. You get `film-space-<date>.mp4` and `film-space-<date>.json`.
+4. In Blender go to **Scripting**, open `film_space_import.py`, set `PATH` to the `.json` and press **Run Script**. You get a `FilmSpace` collection with an animated `FilmSpaceCam` and `StandIn.NN` figures to replace with your characters. From a terminal you can instead run:
+   ```bash
+   blender --python film_space_import.py -- C:\path\film-space-XXXX.json
+   ```
 
-WebXR needs HTTPS or `localhost`. Pick one:
-
-1. **USB (recommended)**: enable USB debugging, run `adb reverse tcp:8000 tcp:8000`, open `http://localhost:8000` on the phone.
-2. **Wi-Fi**: on the phone open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, add `http://<PC-IP>:8000` (IP from `ipconfig`), Relaunch, open that address. Allow Python through the Windows firewall on private networks only.
-
-Press **Camera**: the AR session starts and your steps and phone movements drive the camera. iPhone has no WebXR: use the original app there.
-
-## Blender: import a recording
-
-Each REC downloads `film-space-<date>.mp4` + `film-space-<date>.json` (Chrome may ask to allow multiple downloads).
-
-In Blender (tested on 4.5): Scripting → open `film_space_import.py` → set `PATH` to the `.json` → Run Script. Or:
-
-```bash
-blender --python film_space_import.py -- C:\path\film-space-XXXX.json
-```
-
-It creates a `FilmSpace` collection with an animated `FilmSpaceCam` (location, rotation, focal length, 36 mm sensor) and `StandIn.NN` figures, at the scene's FPS, and sets the frame range. Replace the stand-ins with your characters.
-
-## Blender live: the phone is Blender's camera
-
-1. Blender → Scripting → open `film_space_live.py` → Run Script. Blender serves the page on port 8001.
-2. Phone over USB: `adb reverse tcp:8001 tcp:8001`, open `http://localhost:8001/?blender` in Chrome (or the Wi-Fi route above with port 8001).
-3. On the PC look through the camera (Numpad 0). On the phone press **Camera**: Blender's active camera starts from where it is and follows your steps and phone movements. The lens button changes the Blender focal length too.
-4. To reposition: move the camera in Blender, then on the phone press Edit and Camera again; Blender re-anchors to the camera's current pose.
-5. To record: enable Auto Keying (●) and press Play: the motion becomes keyframes.
-
-Tune at the top of the script: `SCALE` (Blender units per real metre walked) and `SMOOTH` (0 = raw, towards 1 = smoother but more lag).
-Without AR (PC, or a phone without ARCore) the same page drives the camera with WASD + mouse.
-
-Notes: the phone shows the simple stand-in scene, not Blender's viewport, so watch the PC monitor. While the script runs, port 8001 is reachable from your local network. The script sets the active camera to quaternion rotation and a 36 mm horizontal sensor.
-
-## Credits
-
-Concept, scene layout, stand-in proportions and camera mapping from [maxprokopp/film-space](https://github.com/maxprokopp/film-space). This is an independent reimplementation for the web.
+Notes:
+- The phone shows the stand-in scene, not Blender's viewport, so watch the PC monitor while you shoot.
+- The scripts set the camera to quaternion rotation and a 36 mm horizontal sensor.
+- Port 8001 is open on your local network while the live script runs.
