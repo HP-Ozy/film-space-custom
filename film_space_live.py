@@ -1,4 +1,4 @@
-"""Film Space Live: drive Blender's active camera from the phone in real time.
+"""Film Space Custom live: drive Blender's active camera from the phone in real time.
 
 Blender > Scripting > open this file > Run Script. Then on the phone open
 http://localhost:8001/?blender (with `adb reverse tcp:8001 tcp:8001`) and press Camera.
@@ -92,4 +92,4 @@ srv = ThreadingHTTPServer(("0.0.0.0", PORT), partial(Handler, directory=DIR))
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 bpy.app.timers.register(tick, persistent=True)
 ns["film_space_live"] = (srv, tick)
-print(f"Film Space Live on port {PORT}: open http://localhost:{PORT}/?blender on the phone")
+print(f"Film Space Custom live on port {PORT}: open http://localhost:{PORT}/?blender on the phone")

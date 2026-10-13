@@ -1,4 +1,4 @@
-"""Import a Film Space Web recording (.json) into Blender: animated camera + stand-ins.
+"""Import a Film Space Custom recording (.json) into Blender: animated camera + stand-ins.
 
 Blender > Scripting > open this file > set PATH > Run Script
 or: blender --python film_space_import.py -- C:\\path\\film-space-XXXX.json
@@ -73,7 +73,7 @@ def main(path):
 
     scn.frame_start = 1
     scn.frame_end = max(1, round(1 + frames[-1][0] * fps))
-    print(f"Film Space: {len(frames)} camera samples, {len(data['humans'])} stand-ins, frames 1-{scn.frame_end}")
+    print(f"Film Space Custom: {len(frames)} camera samples, {len(data['humans'])} stand-ins, frames 1-{scn.frame_end}")
 
 
 main(sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else PATH)

@@ -1,4 +1,4 @@
-# Film Space Web
+# Film Space Custom
 
 <p>
   <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTF2MTFIMHpNMTMgMGgxMXYxMUgxM3pNMCAxM2gxMXYxMUgwek0xMyAxM2gxMXYxMUgxM3oiLz48L3N2Zz4=" alt="Windows">
@@ -12,7 +12,7 @@
   <img src="assets/workflow-demo.gif" alt="Workflow: stand-ins blocked in the virtual studio, real handheld camera motion, AI style-transfer output" width="400">
   <br>
   <sub>The workflow: block stand-ins in the virtual studio (bottom left), perform the camera move for real with the phone (bottom right), feed the recording to an AI video model for the final look (top).<br>
-  Footage from the original <a href="https://github.com/maxprokopp/film-space">film-space</a> iOS demo by maxprokopp; Film Space Web reproduces the same process on Windows and Android.</sub>
+  Footage from the original <a href="https://github.com/maxprokopp/film-space">film-space</a> iOS demo by maxprokopp; Film Space Custom reproduces the same process on Windows and Android.</sub>
 </p>
 
 A browser port of [film-space](https://github.com/maxprokopp/film-space) (an iPhone/ARKit app) for people without a Mac or an iPhone: block a scene with stand-ins, then walk through it with your phone as the camera. Use the recording as a camera-motion reference for AI video tools (e.g. Seedance), import it into Blender, or drive Blender's camera live.
