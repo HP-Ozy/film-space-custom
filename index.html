@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Film Space Web</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#383838;font:14px system-ui,sans-serif;color:#eee;touch-action:none}
+#app{position:fixed;inset:0}
+canvas{display:block}
+#bar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px;background:#000a;flex-wrap:wrap}
+#bar div{display:flex;gap:6px;align-items:center}
+button{background:#333;color:#eee;border:1px solid #555;border-radius:8px;padding:8px 12px;font:inherit;min-width:44px;min-height:40px;user-select:none}
+button:disabled{opacity:.35}
+button.on{background:#0a84ff;border-color:#0a84ff}
+#rec.on{background:#d33;border-color:#d33}
+#help{position:absolute;top:8px;left:8px;background:#000a;padding:6px 10px;border-radius:8px;font-size:12px;max-width:60ch}
+[data-mode=edit] .cam,[data-mode=camera] .edit{display:none}
+</style>
+</head>
+<body>
+<div id="app" data-mode="edit">
+  <div id="help"></div>
+  <div id="bar">
+    <div>
+      <button id="rotL" class="edit" title="Rotate stand-in (hold)" disabled>↺</button>
+      <button id="rotR" class="edit" title="Rotate stand-in (hold)" disabled>↻</button>
+      <button id="add" class="edit">+ Figure</button>
+      <button id="del" class="edit" title="Delete stand-in" disabled>🗑</button>
+      <button id="lens" class="cam" title="Cycle lens">35mm</button>
+    </div>
+    <div><button id="mEdit" class="on">Edit</button><button id="mCam">Camera</button></div>
+    <div>
+      <button id="up" class="edit" title="Raise framing (hold)">▲</button>
+      <button id="down" class="edit" title="Lower framing (hold)">▼</button>
+      <button id="shoulder" class="cam" title="Camera at shoulder height, scene centre">Shoulder</button>
+      <button id="lock" title="Lock viewpoint">🔒</button>
+      <button id="rec" class="cam">● REC</button>
+      <button id="ret" title="Return to locked viewpoint" disabled>↩</button>
+    </div>
+  </div>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const app = $('app'), UP = new THREE.Vector3(0, 1, 0);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+app.prepend(renderer.domElement);
+const canvas = renderer.domElement;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x383838);
+const cam = new THREE.PerspectiveCamera(50, 1, 0.05, 200);
+const controls = new OrbitControls(cam, canvas);
+controls.target.set(0, 0.8, 0);
+controls.minDistance = 1.5; controls.maxDistance = 20;
+cam.position.set(6 * Math.cos(.35) * Math.sin(.6), .8 + 6 * Math.sin(.35), 6 * Math.cos(.35) * Math.cos(.6));
+controls.update();
+
+// Studio (SceneEnvironment.swift): checkerboard 20x20 m, 1 m grid, axes, key + fill light
+const checker = document.createElement('canvas');
+checker.width = checker.height = 20;
+const cg = checker.getContext('2d');
+cg.fillStyle = '#383838'; cg.fillRect(0, 0, 20, 20);
+cg.fillStyle = '#575757';
+for (let i = 0; i < 20; i++) for (let j = 0; j < 20; j++) if ((i + j) % 2 === 0) cg.fillRect(i, j, 1, 1);
+const tex = new THREE.CanvasTexture(checker);
+tex.magFilter = THREE.NearestFilter; tex.colorSpace = THREE.SRGBColorSpace;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ map: tex }));
+floor.rotation.x = -Math.PI / 2;
+const grid = new THREE.GridHelper(20, 20, 0x525252, 0x525252); grid.position.y = .001;
+const axes = new THREE.AxesHelper(1.2); axes.position.y = .002;
+const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(4, 6, 4);
+const fill = new THREE.DirectionalLight(0xffffff, .8); fill.position.set(-3, 2, -2);
+scene.add(floor, grid, axes, key, fill, new THREE.HemisphereLight(0xffffff, 0x444444, .8));
+
+// Stand-ins (HumanFigureFactory.swift): ~1.75 m, feet at y=0. [w,h,d, x,y,z, rotZ, skin]; w=0 is the head sphere
+const PARTS = [[0,0,0, 0,1.62,0, 0,1], [.36,.48,.18, 0,1.22,0, 0,0],
+  [.11,.38,.11, -.24,1.28,0, .35,0], [.11,.38,.11, .24,1.28,0, -.35,0],
+  [.09,.34,.09, -.38,1.08,0, .15,1], [.09,.34,.09, .38,1.08,0, -.15,1],
+  [.13,.82,.13, -.11,.58,0, 0,0], [.13,.82,.13, .11,.58,0, 0,0],
+  [.14,.08,.24, -.11,.04,.02, 0,1], [.14,.08,.24, .11,.04,.02, 0,1]];
+const skin = new THREE.MeshStandardMaterial({ color: new THREE.Color(.76, .60, .42), roughness: .6 });
+const CLOTH = new THREE.Color(.35, .38, .45), SEL = new THREE.Color(0x0a84ff);
+const humans = new THREE.Group(); scene.add(humans);
+function addHuman(px = 0, pz = 0, ry = 0) {
+  const g = new THREE.Group(), cloth = new THREE.MeshStandardMaterial({ color: CLOTH, roughness: .5 });
+  for (const [w, h, d, x, y, z, rz, s] of PARTS) {
+    const m = new THREE.Mesh(w ? new THREE.BoxGeometry(w, h, d) : new THREE.SphereGeometry(.11, 24, 16), s ? skin : cloth);
+    m.position.set(x, y, z); m.rotation.z = rz; g.add(m);
+  }
+  g.userData.cloth = cloth; g.position.set(px, 0, pz); g.rotation.y = ry;
+  humans.add(g); return g;
+}
+let sel = null;
+function select(g) {
+  if (sel) sel.userData.cloth.color.copy(CLOTH);
+  sel = g; if (g) g.userData.cloth.color.copy(SEL);
+  $('rotL').disabled = $('rotR').disabled = $('del').disabled = !g;
+}
+// Blocking lives in the URL hash so the same link opens the same scene on the phone
+function save() {
+  history.replaceState(null, '', '#' + humans.children.map(g => [g.position.x, g.position.z, g.rotation.y].map(v => v.toFixed(2)).join(',')).join(';'));
+}
+for (const s of location.hash.slice(1).split(';')) {
+  const v = s.split(',').map(Number);
+  if (v.length === 3 && v.every(Number.isFinite)) addHuman(...v);
+}
+
+$('add').onclick = () => { select(addHuman(humans.children.length * .6, 0)); save(); };
+$('del').onclick = () => { if (!sel) return; humans.remove(sel); sel = null; select(humans.children.at(-1) || null); save(); };
+function hold(btn, fn) {
+  let t = null;
+  btn.onpointerdown = () => { fn(); t = setInterval(fn, 16); };
+  btn.onpointerup = btn.onpointerleave = btn.onpointercancel = () => { if (t) { clearInterval(t); t = null; save(); } };
+}
+hold($('rotL'), () => sel && (sel.rotation.y += .03));
+hold($('rotR'), () => sel && (sel.rotation.y -= .03));
+hold($('up'), () => { controls.target.y += .02; cam.position.y += .02; });
+hold($('down'), () => { controls.target.y -= .02; cam.position.y -= .02; });
+
+// Edit gestures: drag a figure to move it on the floor, tap empty space to deselect
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), ground = new THREE.Plane(UP, 0), hit = new THREE.Vector3();
+let drag = null, downAt = null;
+function pick(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ndc, cam);
+}
+canvas.addEventListener('pointerdown', e => { // capture phase: runs before OrbitControls
+  if (mode !== 'edit' || !e.isPrimary) return;
+  pick(e);
+  const h = ray.intersectObjects(humans.children, true)[0];
+  if (!h) { downAt = [e.clientX, e.clientY]; return; }
+  let g = h.object; while (g.parent !== humans) g = g.parent;
+  select(g); controls.enabled = false;
+  ray.ray.intersectPlane(ground, hit);
+  drag = g.position.clone().sub(hit);
+}, true);
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  pick(e);
+  if (ray.ray.intersectPlane(ground, hit)) sel.position.set(hit.x + drag.x, 0, hit.z + drag.z);
+});
+canvas.addEventListener('pointerup', e => {
+  if (drag) { drag = null; controls.enabled = true; save(); }
+  else if (downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) < 5) select(null);
+  downAt = null;
+});
+
+// Camera mode (ARCameraView.applyDeviceMotion): base pose E + device motion since `ref`
+const E = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+const dev = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+let ref = null; // null = re-anchor on the next device pose
+const _q = new THREE.Quaternion(), _v = new THREE.Vector3(), _f = new THREE.Vector3();
+const yaw = q => { _f.set(0, 0, -1).applyQuaternion(q); return Math.atan2(_f.x, _f.z); };
+function applyDevice() {
+  if (!ref) ref = { p: dev.p.clone(), q: dev.q.clone() };
+  cam.quaternion.copy(E.q).multiply(_q.copy(ref.q).invert().multiply(dev.q));
+  _v.subVectors(dev.p, ref.p).applyAxisAngle(UP, yaw(E.q) - yaw(ref.q));
+  cam.position.copy(E.p).add(_v);
+}
+// self-check: base facing -X, device walks 1 m along its own forward (-Z) -> camera moves 1 m along -X
+E.q.setFromAxisAngle(UP, Math.PI / 2); dev.p.set(0, 0, -1); ref = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+applyDevice(); console.assert(cam.position.distanceTo(new THREE.Vector3(-1, 0, 0)) < 1e-6, 'applyDevice math');
+dev.p.set(0, 0, 0); ref = null; E.q.identity();
+cam.position.set(6 * Math.cos(.35) * Math.sin(.6), .8 + 6 * Math.sin(.35), 6 * Math.cos(.35) * Math.cos(.6)); controls.update();
+
+// PC: keyboard + mouse stand in for walking with the phone
+const keys = new Set(), _e = new THREE.Euler();
+let vy = 0, vp = 0;
+addEventListener('keydown', e => keys.add(e.code));
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+canvas.addEventListener('click', () => { if (mode === 'camera' && !xr) canvas.requestPointerLock(); });
+addEventListener('mousemove', e => {
+  if (document.pointerLockElement !== canvas) return;
+  vy -= e.movementX * .002;
+  vp = Math.max(-1.5, Math.min(1.5, vp - e.movementY * .002));
+});
+function stepKeyboard(dt) {
+  dev.q.setFromEuler(_e.set(vp, vy, 0, 'YXZ'));
+  const s = (keys.has('ShiftLeft') ? 3 : 1.4) * dt; // ~walking speed, m/s
+  const f = (keys.has('KeyW') - keys.has('KeyS')) * s, r = (keys.has('KeyD') - keys.has('KeyA')) * s;
+  dev.p.x += -Math.sin(vy) * f + Math.cos(vy) * r;
+  dev.p.z += -Math.cos(vy) * f - Math.sin(vy) * r;
+  dev.p.y += (keys.has('KeyE') - keys.has('KeyQ')) * s;
+}
+
+// Android phone: WebXR immersive-ar = ARCore 6DoF tracking (ARKit equivalent); the scene is shown via DOM overlay
+let xr = null, arOK = false;
+navigator.xr?.isSessionSupported('immersive-ar').then(v => arOK = v, () => {});
+async function startXR() {
+  try {
+    xr = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['local', 'dom-overlay'], domOverlay: { root: app } });
+  } catch (err) { xr = null; help('AR did not start: ' + err.message); return; }
+  const gl = document.createElement('canvas').getContext('webgl', { xrCompatible: true });
+  xr.updateRenderState({ baseLayer: new XRWebGLLayer(xr, gl) });
+  const space = await xr.requestReferenceSpace('local');
+  xr.addEventListener('end', () => { xr = null; setMode('edit'); });
+  resize();
+  const onFrame = (t, frame) => {
+    if (!xr) return;
+    xr.requestAnimationFrame(onFrame);
+    const pose = frame.getViewerPose(space);
+    if (pose) {
+      const { position: p, orientation: o } = pose.transform;
+      dev.p.set(p.x, p.y, p.z); dev.q.set(o.x, o.y, o.z, o.w);
+    }
+    applyDevice(); sample(); renderer.render(scene, cam);
+  };
+  xr.requestAnimationFrame(onFrame);
+}
+
+// Lenses (SceneState.FocalLength): horizontal FOV on a 36 mm sensor; three.js wants vertical FOV
+const LENSES = [35, 50, 75, 200];
+let lens = 0;
+function applyLens() {
+  const h = 2 * Math.atan(36 / (2 * LENSES[lens]));
+  cam.fov = mode === 'camera' ? THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(h / 2) / cam.aspect)) : 50;
+  cam.updateProjectionMatrix();
+  $('lens').textContent = LENSES[lens] + 'mm';
+}
+$('lens').onclick = () => { lens = (lens + 1) % LENSES.length; applyLens(); };
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  cam.aspect = innerWidth / innerHeight; applyLens();
+}
+addEventListener('resize', resize);
+
+// Lock / return / shoulder
+let locked = null;
+$('lock').onclick = () => { locked = { p: cam.position.clone(), q: cam.quaternion.clone() }; $('ret').disabled = false; };
+$('ret').onclick = () => {
+  if (!locked) return;
+  if (mode === 'camera') { E.p.copy(locked.p); E.q.copy(locked.q); ref = null; return; }
+  const d = cam.position.distanceTo(controls.target);
+  cam.position.copy(locked.p);
+  controls.target.copy(locked.p).add(_f.set(0, 0, -d).applyQuaternion(locked.q));
+  controls.update();
+};
+$('shoulder').onclick = () => { E.p.set(controls.target.x, 1.5, controls.target.z); E.q.copy(dev.q); ref = null; };
+
+// Recording (SceneRecorder.swift): rendered canvas + mic, downloaded as a file
+let rec = null, mic = null, track = [], t0 = 0;
+// Camera track for Blender (film_space_import.py): [t s, pos xyz, quat xyzw, lens mm], three.js Y-up metres
+const LIVE = new URLSearchParams(location.search).has('blender'); // page served by film_space_live.py
+let live = { s: '', busy: false };
+function sample() {
+  if (LIVE && mode === 'camera' && !live.busy) { // raw device pose; Blender anchors it to its own active camera
+    live.busy = true;
+    fetch('/pose', { method: 'POST', body: JSON.stringify({ s: live.s, p: dev.p.toArray(), q: dev.q.toArray(), mm: LENSES[lens] }) })
+      .catch(() => {}).finally(() => live.busy = false);
+  }
+  if (rec) track.push([(performance.now() - t0) / 1000, ...cam.position.toArray(), ...cam.quaternion.toArray(), LENSES[lens]].map(v => +v.toFixed(5)));
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+}
+async function startRec() {
+  const stream = canvas.captureStream(30);
+  try {
+    mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mic.getAudioTracks().forEach(t => stream.addTrack(t));
+  } catch { mic = null; } // no mic or denied: record video only
+  const type = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const chunks = [];
+  rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 12e6 });
+  rec.ondataavailable = e => chunks.push(e.data);
+  const name = `film-space-${new Date().toISOString().replace(/[:.]/g, '-')}`, frames = track = [];
+  rec.onstop = () => {
+    download(new Blob(chunks, { type: type || 'video/webm' }), `${name}.${type.startsWith('video/mp4') ? 'mp4' : 'webm'}`);
+    const humansOut = humans.children.map(g => [g.position.x, g.position.z, g.rotation.y]);
+    download(new Blob([JSON.stringify({ frames, humans: humansOut })], { type: 'application/json' }), `${name}.json`);
+  };
+  rec.start(1000); t0 = performance.now();
+  $('rec').classList.add('on'); $('rec').textContent = '■ STOP';
+}
+function stopRec() {
+  if (!rec) return;
+  rec.stop(); rec = null;
+  mic?.getTracks().forEach(t => t.stop()); mic = null;
+  $('rec').classList.remove('on'); $('rec').textContent = '● REC';
+}
+$('rec').onclick = () => rec ? stopRec() : startRec();
+
+// Modes
+let mode = 'edit', editPose = null;
+function help(msg) {
+  $('help').textContent = msg || (mode === 'edit'
+    ? 'Drag: orbit · Wheel/pinch: zoom · Right drag/2 fingers: pan · Drag a figure to move it'
+    : xr ? 'Walk with the phone: the camera follows you'
+    : arOK ? 'AR not active' : 'Click the scene to capture the mouse · WASD move · Q/E down/up · Shift faster · Esc release');
+}
+function setMode(m) {
+  if (m === mode) return;
+  mode = m; app.dataset.mode = m;
+  $('mEdit').classList.toggle('on', m === 'edit'); $('mCam').classList.toggle('on', m === 'camera');
+  if (m === 'camera') {
+    select(null); controls.enabled = false;
+    editPose = { p: cam.position.clone(), q: cam.quaternion.clone() };
+    E.p.copy(cam.position); E.q.copy(cam.quaternion); ref = null;
+    live.s = String(Date.now()); // new session = Blender re-anchors to its current camera
+    if (arOK) startXR(); // needs the click's user activation
+  } else {
+    stopRec(); xr?.end(); document.exitPointerLock?.();
+    cam.position.copy(editPose.p); cam.quaternion.copy(editPose.q);
+    controls.enabled = true;
+  }
+  applyLens(); help();
+}
+$('mEdit').onclick = () => setMode('edit');
+$('mCam').onclick = () => setMode('camera');
+
+resize(); help();
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), .1);
+  if (xr) return; // XR frames render in onFrame
+  if (mode === 'camera') { stepKeyboard(dt); applyDevice(); sample(); } else controls.update();
+  renderer.render(scene, cam);
+});
+</script>
+</body>
+</html>
