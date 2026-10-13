@@ -6,77 +6,91 @@
   <img src="https://img.shields.io/badge/Blender-E87D0D?style=for-the-badge&logo=blender&logoColor=white" alt="Blender">
 </p>
 
-**Handheld virtual camera for Windows + Android, with live Blender control.**
+**Your phone becomes a film camera inside a 3D scene.**
+
+## What it is
+
+In 3D animation the camera usually moves too perfectly, and it looks fake. With Film Space Custom you film the way a camera operator does on a real set: you hold an Android phone and walk, turn and tilt it, and the camera in the 3D scene makes exactly the same movement.
+
+You can use that movement in two ways:
+
+- **In Blender**, the free 3D program: the phone drives Blender's camera, so you film your own characters and sets with a real handheld feel.
+- **As a reference for AI video tools**: record the movement in a simple scene, then give the clip to an AI video model to restyle it.
+
+It is a Windows and Android version of [film-space](https://github.com/maxprokopp/film-space), which needs an iPhone and a Mac.
 
 <p align="center">
-  <img src="assets/workflow-demo.gif" alt="Workflow: stand-ins blocked in the virtual studio, real handheld camera motion, AI style-transfer output" width="400">
+  <img src="assets/workflow-demo.gif" alt="Grey figures placed in the virtual studio, the camera move filmed with the phone, the final AI-styled clip" width="400">
   <br>
-  <sub>The workflow: block stand-ins in the virtual studio (bottom left), perform the camera move for real with the phone (bottom right), feed the recording to an AI video model for the final look (top).<br>
-  Footage from the original <a href="https://github.com/maxprokopp/film-space">film-space</a> iOS demo by maxprokopp; Film Space Custom reproduces the same process on Windows and Android.</sub>
+  <sub>Bottom left: grey figures mark where the actors stand. Bottom right: the camera move, filmed by walking with the phone. Top: the clip restyled by an AI video model.<br>
+  Footage from the original <a href="https://github.com/maxprokopp/film-space">film-space</a> iOS demo by maxprokopp.</sub>
 </p>
 
-## Concept
+## The three parts
 
-Direct a virtual camera by physically moving your phone. You block a scene with stand-ins, then walk through it holding an Android phone: every step, turn and tilt becomes camera motion, as on a real set. That real, human camera movement drives Blender's camera, live or from a recording, so you can render it with your own characters and environments or use it as a motion reference for AI video tools. It is the [film-space](https://github.com/maxprokopp/film-space) idea (iPhone + ARKit) rebuilt for Windows and Android, with no Mac or iPhone needed.
+| File | What it does |
+|---|---|
+| `index.html` | The page you open on the phone. A simple virtual studio: a checkerboard floor and grey figures (stand-ins) that show where the actors will be. |
+| `film_space_live.py` | Run it inside Blender: the phone moves Blender's camera live, while you watch the result on the PC monitor. |
+| `film_space_import.py` | Run it inside Blender to load a movement you recorded earlier on the phone. |
 
-## What it does
-
-- **Virtual studio** (`index.html`): 20 × 20 m checkerboard floor, 1 m grid, axes and 1.75 m human stand-ins. In **Edit** mode you orbit, zoom and pan the view, add, move, rotate and delete stand-ins, raise or lower the framing, and lock or return to a viewpoint. The layout is saved in the page URL.
-- **Camera mode**: on an Android phone (Chrome + ARCore), WebXR tracks the phone in 6DoF, the same kind of tracking as ARKit, and the virtual camera follows it. Real steps become real distances, and turning or tilting the phone aims the camera. On a PC the same mode uses WASD + mouse. Lens: pinch with two fingers (or the mouse wheel) to zoom from 12 to 300 mm, or tap the lens button for 35, 50, 75 and 200 mm (full frame). 📷 takes a screenshot: a PNG on the phone, or with Blender live, the camera view saved by Blender in `shots/`. **Shoulder** places the camera at 1.5 m in the scene centre.
-- **Recording**: REC saves the rendered view as `.mp4` plus a `.json` file with the camera track (time, position, rotation, lens) and the stand-in layout.
-- **Blender import** (`film_space_import.py`): turns the `.json` into an animated camera (location, rotation and focal length on a 36 mm sensor, at the scene's FPS) plus stand-in figures.
-- **Blender live** (`film_space_live.py`): Blender serves the page to the phone and receives its pose about 60 times a second. It applies the pose to the active camera with smoothing, and records keyframes while the timeline plays with Auto Keying on.
-
-## Setup and use with Blender
-
-### Requirements
+## What you need
 
 | | |
 |---|---|
-| PC | Windows 10/11 with [Blender](https://www.blender.org/download/) 4.5 (tested) and Python 3 for recording mode |
-| Phone | Android with Chrome and [Google Play Services for AR](https://play.google.com/store/apps/details?id=com.google.ar.core) (tested on Samsung Galaxy A55, Android 16) |
-| Link | USB cable with [adb platform-tools](https://developer.android.com/tools/releases/platform-tools); on the phone, enable Developer options → USB debugging and accept the "Allow USB debugging" prompt |
+| PC | Windows 10 or 11 with [Blender](https://www.blender.org/download/) 4.5 |
+| Phone | Android with Chrome and [Google Play Services for AR](https://play.google.com/store/apps/details?id=com.google.ar.core), the Google app that lets the phone sense its own movement (tested on Samsung Galaxy A55, Android 16) |
+| Cable | A USB cable, plus Google's free [platform-tools](https://developer.android.com/tools/releases/platform-tools), which let the PC reach the phone over the cable. On the phone turn on *Developer options → USB debugging* and accept the "Allow USB debugging" message. |
 
-### Live: the phone is Blender's camera
+## Way 1: film live in Blender
 
-1. Clone this repo. In Blender go to **Scripting**, open `film_space_live.py` and press **Run Script**. Blender now serves the page on port 8001.
-2. Connect the phone over USB and run:
+1. Download this project. In Blender open the **Scripting** tab, open `film_space_live.py` and press **Run Script**.
+2. Plug in the phone and run this on the PC, so the phone can reach Blender over the cable:
    ```bash
    adb reverse tcp:8001 tcp:8001
    ```
-3. On the phone, open `http://localhost:8001/?blender` in Chrome.
-4. In Blender, look through the camera (Numpad 0). On the phone, press **Camera**: Blender's active camera starts from its current position and follows your steps and phone movements. Pinch zoom and the lens button also set Blender's focal length; 📷 saves Blender's camera view to `shots/`.
-5. To reposition, move the camera in Blender, then on the phone press **Edit** and **Camera** again: the motion re-anchors to the camera's new pose.
-6. To record a take, enable **Auto Keying** (●) and press **Play**: the motion is written as keyframes.
+3. On the phone, open Chrome at `http://localhost:8001/?blender`.
+4. In Blender, look through the camera (Numpad 0). On the phone press **Camera**: Blender's camera starts from where it is and follows the phone. Watch the PC monitor while you film: the phone only shows the simple studio, not your Blender scene.
+5. To start from another spot, move the camera in Blender, then press **Edit** and **Camera** again on the phone.
+6. To save the movement, turn on **Auto Keying** (the ● button in Blender's timeline) and press **Play**: Blender stores the camera position at every frame.
 
-Tuning at the top of `film_space_live.py`:
-- `SCALE`: Blender units per real metre walked. Use 10 to cross a large set with a few steps.
-- `SMOOTH`: 0 gives raw tracking; values closer to 1 are smoother but lag more.
+Two settings at the top of `film_space_live.py` (run the script again after changing them):
+- `SCALE`: how far the camera moves for each real metre you walk. Use 10 to cross a big set in a few steps.
+- `SMOOTH`: 0 follows every tremor of your hand; values closer to 1 move more smoothly but react later.
 
-### From a recording
+## Way 2: record on the phone, import later
 
-1. Serve the page on the PC with `python -m http.server 8000` in the repo folder.
-2. Run `adb reverse tcp:8000 tcp:8000`, then open `http://localhost:8000` on the phone.
-3. Block the scene, press **Camera** and record with **● REC**. You get `film-space-<date>.mp4` and `film-space-<date>.json`.
-4. In Blender go to **Scripting**, open `film_space_import.py`, set `PATH` to the `.json` and press **Run Script**. You get a `FilmSpace` collection with an animated `FilmSpaceCam` and `StandIn.NN` figures to replace with your characters. From a terminal you can instead run:
-   ```bash
-   blender --python film_space_import.py -- C:\path\film-space-XXXX.json
-   ```
+1. In the project folder, start a small web server on the PC with `python -m http.server 8000` (needs [Python](https://www.python.org/downloads/)).
+2. Run `adb reverse tcp:8000 tcp:8000`, then open `http://localhost:8000` in Chrome on the phone.
+3. Place the figures, press **Camera** and record with **● REC**. You get a video (`film-space-<date>.mp4`) and the movement (`film-space-<date>.json`).
+4. In Blender open `film_space_import.py` in the **Scripting** tab, paste the path of the `.json` file into `PATH` and press **Run Script**. You get the animated camera `FilmSpaceCam` and the grey figures `StandIn.NN`, ready to be replaced by your characters.
 
-Notes:
-- The phone shows the stand-in scene, not Blender's viewport, so watch the PC monitor while you shoot.
-- The scripts set the camera to quaternion rotation and a 36 mm horizontal sensor.
-- Port 8001 is open on your local network while the live script runs.
+## Phone buttons
 
-## Troubleshooting
+| Button | What it does |
+|---|---|
+| **Edit** / **Camera** | Edit: arrange the scene. Camera: film by moving the phone. |
+| **+ Figure**, ↺ ↻, 🗑 | Add, turn or delete a grey figure. Drag a figure with your finger to move it. |
+| ▲ ▼ | Raise or lower the view. |
+| Two fingers / lens button | Zoom: spread or pinch two fingers (12 to 300 mm), or tap the button for 35, 50, 75 and 200 mm. Blender's lens follows. |
+| **Shoulder** | Put the camera at shoulder height in the centre of the scene. |
+| 🔒 / ↩ | Remember the current viewpoint / go back to it. |
+| 📷 | Screenshot. Live with Blender, Blender saves its camera view in the `shots` folder; otherwise the phone saves a picture. |
+| **● REC** | Record a video plus the movement file for Way 2. |
+
+The arrangement of the figures is saved in the page address, so you can bookmark it. On a PC the page works too: in Camera mode the keys W A S D and the mouse replace walking.
+
+## Problems
 
 | Problem | Fix |
 |---|---|
-| `adb devices` shows `unauthorized` | Unlock the phone and accept "Allow USB debugging". If no prompt appears, replug the cable or use Developer options → Revoke USB debugging authorisations. |
-| The page does not load on the phone | Make sure the Blender script is running, then run `adb reverse tcp:8001 tcp:8001` again (needed after every replug). |
-| **Camera** does not start AR | Update Chrome and Google Play Services for AR, and open the page as `http://localhost:...`, not by IP address. |
-| The Blender camera does not move | Make sure the scene has an active camera, and press **Camera** on the phone again to re-anchor. |
-| Motion is shaky, or laggy | Raise `SMOOTH` if the motion shakes, lower it if it lags, then run the script again. |
+| `adb devices` says `unauthorized` | Unlock the phone and accept "Allow USB debugging". If no message appears, plug the cable in again. |
+| The page does not open on the phone | Check that the Blender script is running, then run the `adb reverse` command again (needed every time you plug the cable in). |
+| **Camera** does not start | Update Chrome and Google Play Services for AR, and open the page as `http://localhost:...`. |
+| Blender's camera does not move | The Blender scene needs an active camera. Press **Camera** on the phone again. |
+| The movement shakes, or lags | Raise `SMOOTH` if it shakes, lower it if it lags. |
+
+While the live script runs, Blender accepts connections on port 8001 from your local network.
 
 ## License
 

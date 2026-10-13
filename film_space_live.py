@@ -55,7 +55,7 @@ def heading(q):
 
 
 def target_pose(d):
-    """Same mapping as the app (ARCameraView.applyDeviceMotion): anchor pose + device motion since anchoring."""
+    """Same mapping as applyDevice() in index.html: anchor pose + device motion since anchoring."""
     rot = state["E_q"] @ state["ref_q"].inverted() @ d["q"]
     delta = (d["p"] - state["ref_p"]) * SCALE
     delta.rotate(Quaternion((0, 0, 1), heading(state["E_q"]) - heading(state["ref_q"])))

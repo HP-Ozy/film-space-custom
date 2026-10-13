@@ -64,7 +64,7 @@ controls.minDistance = 1.5; controls.maxDistance = 20;
 cam.position.set(6 * Math.cos(.35) * Math.sin(.6), .8 + 6 * Math.sin(.35), 6 * Math.cos(.35) * Math.cos(.6));
 controls.update();
 
-// Studio (SceneEnvironment.swift): checkerboard 20x20 m, 1 m grid, axes, key + fill light
+// Studio: checkerboard 20x20 m, 1 m grid, axes, key + fill light
 const checker = document.createElement('canvas');
 checker.width = checker.height = 20;
 const cg = checker.getContext('2d');
@@ -81,7 +81,7 @@ const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(4, 6, 4)
 const fill = new THREE.DirectionalLight(0xffffff, .8); fill.position.set(-3, 2, -2);
 scene.add(floor, grid, axes, key, fill, new THREE.HemisphereLight(0xffffff, 0x444444, .8));
 
-// Stand-ins (HumanFigureFactory.swift): ~1.75 m, feet at y=0. [w,h,d, x,y,z, rotZ, skin]; w=0 is the head sphere
+// Stand-ins: ~1.75 m, feet at y=0. [w,h,d, x,y,z, rotZ, skin]; w=0 is the head sphere
 const PARTS = [[0,0,0, 0,1.62,0, 0,1], [.36,.48,.18, 0,1.22,0, 0,0],
   [.11,.38,.11, -.24,1.28,0, .35,0], [.11,.38,.11, .24,1.28,0, -.35,0],
   [.09,.34,.09, -.38,1.08,0, .15,1], [.09,.34,.09, .38,1.08,0, -.15,1],
@@ -155,7 +155,7 @@ canvas.addEventListener('pointerup', e => {
   downAt = null;
 });
 
-// Camera mode (ARCameraView.applyDeviceMotion): base pose E + device motion since `ref`
+// Camera mode: base pose E + device motion since `ref`
 const E = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
 const dev = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
 let ref = null; // null = re-anchor on the next device pose
@@ -194,7 +194,7 @@ function stepKeyboard(dt) {
   dev.p.y += (keys.has('KeyE') - keys.has('KeyQ')) * s;
 }
 
-// Android phone: WebXR immersive-ar = ARCore 6DoF tracking (ARKit equivalent); the scene is shown via DOM overlay
+// Android phone: WebXR immersive-ar = ARCore tracks the phone position + rotation; the scene is shown via DOM overlay
 let xr = null, arOK = false;
 navigator.xr?.isSessionSupported('immersive-ar').then(v => arOK = v, () => {});
 async function startXR() {
@@ -219,7 +219,7 @@ async function startXR() {
   xr.requestAnimationFrame(onFrame);
 }
 
-// Lenses (SceneState.FocalLength): horizontal FOV on a 36 mm sensor; three.js wants vertical FOV
+// Lenses: horizontal FOV on a 36 mm sensor; three.js wants vertical FOV
 const LENSES = [35, 50, 75, 200];
 let mm = LENSES[0];
 function applyLens() {
@@ -259,7 +259,7 @@ $('ret').onclick = () => {
 };
 $('shoulder').onclick = () => { E.p.set(controls.target.x, 1.5, controls.target.z); E.q.copy(dev.q); ref = null; };
 
-// Recording (SceneRecorder.swift): rendered canvas + mic, downloaded as a file
+// Recording: rendered canvas + mic, downloaded as a file
 let rec = null, mic = null, track = [], t0 = 0;
 // Camera track for Blender (film_space_import.py): [t s, pos xyz, quat xyzw, lens mm], three.js Y-up metres
 const LIVE = new URLSearchParams(location.search).has('blender'); // page served by film_space_live.py

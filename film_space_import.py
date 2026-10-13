@@ -12,7 +12,7 @@ PATH = r""  # the .json downloaded next to the video
 Y_TO_Z = Quaternion((1, 0, 0), math.radians(90))
 def pos(x, y, z): return Vector((x, -z, y))
 
-# same stand-in as the web page (HumanFigureFactory.swift): [w,h,d, x,y,z, rotZ, skin], w=0 is the head
+# same stand-in as PARTS in index.html: [w,h,d, x,y,z, rotZ, skin], w=0 is the head
 PARTS = [[0,0,0, 0,1.62,0, 0,1], [.36,.48,.18, 0,1.22,0, 0,0],
   [.11,.38,.11, -.24,1.28,0, .35,0], [.11,.38,.11, .24,1.28,0, -.35,0],
   [.09,.34,.09, -.38,1.08,0, .15,1], [.09,.34,.09, .38,1.08,0, -.15,1],
