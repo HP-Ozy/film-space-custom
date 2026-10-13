@@ -1,0 +1,29 @@
+Film Space Custom — Proprietary License
+
+Copyright (c) 2026 HP-Ozy. All rights reserved.
+
+This software and its documentation (the "Software") are the proprietary property of HP-Ozy.
+The source code is publicly visible for reference only. Visibility does not grant any licence.
+
+1. No use without a licence. You may not use, copy, modify, merge, publish, distribute,
+   sublicense, sell, host, or create derivative works of the Software, in whole or in part,
+   unless HP-Ozy has granted you a licence in writing.
+
+2. Licensed clients. A client holding a written licence from HP-Ozy may use the Software
+   only within the scope, term and number of users stated in that licence. Licences are
+   personal to the client and may not be transferred or sublicensed.
+
+3. Ownership. All intellectual property rights in the Software remain with HP-Ozy.
+   Camera recordings and renders that a licensed client produces with the Software belong
+   to that client.
+
+4. No warranty. The Software is provided "as is", without warranty of any kind, express or
+   implied, including fitness for a particular purpose and non-infringement. In no event
+   shall HP-Ozy be liable for any claim, damages or other liability arising from the use of
+   the Software.
+
+5. Third-party components. The Software loads three.js (MIT License, Copyright (c) 2010-2024
+   three.js authors) from a public CDN, and its scripts run inside Blender (GNU GPL), which
+   are licensed separately by their respective owners and are not covered by this licence.
+
+For licensing enquiries contact HP-Ozy via https://github.com/HP-Ozy.

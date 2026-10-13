@@ -29,7 +29,13 @@ Direct a virtual camera by physically moving your phone. You block a scene with 
 
 ## Setup and use with Blender
 
-Requirements: Windows PC with Blender (tested on 4.5), an Android phone with Chrome and ARCore, and a USB cable with [adb](https://developer.android.com/tools/releases/platform-tools) (USB debugging enabled on the phone).
+### Requirements
+
+| | |
+|---|---|
+| PC | Windows 10/11 with [Blender](https://www.blender.org/download/) 4.5 (tested) and Python 3 for recording mode |
+| Phone | Android with Chrome and [Google Play Services for AR](https://play.google.com/store/apps/details?id=com.google.ar.core) (tested on Samsung Galaxy A55, Android 16) |
+| Link | USB cable with [adb platform-tools](https://developer.android.com/tools/releases/platform-tools); on the phone, enable Developer options → USB debugging and accept the "Allow USB debugging" prompt |
 
 ### Live: the phone is Blender's camera
 
@@ -61,3 +67,17 @@ Notes:
 - The phone shows the stand-in scene, not Blender's viewport, so watch the PC monitor while you shoot.
 - The scripts set the camera to quaternion rotation and a 36 mm horizontal sensor.
 - Port 8001 is open on your local network while the live script runs.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `adb devices` shows `unauthorized` | Unlock the phone and accept "Allow USB debugging". If no prompt appears, replug the cable or use Developer options → Revoke USB debugging authorisations. |
+| The page does not load on the phone | Make sure the Blender script is running, then run `adb reverse tcp:8001 tcp:8001` again (needed after every replug). |
+| **Camera** does not start AR | Update Chrome and Google Play Services for AR, and open the page as `http://localhost:...`, not by IP address. |
+| The Blender camera does not move | Make sure the scene has an active camera, and press **Camera** on the phone again to re-anchor. |
+| Motion is shaky, or laggy | Raise `SMOOTH` if the motion shakes, lower it if it lags, then run the script again. |
+
+## License
+
+Proprietary. Copyright (c) 2026 HP-Ozy. All rights reserved. The source is visible for reference only; any use requires a written licence from HP-Ozy. See [LICENSE](LICENSE).
