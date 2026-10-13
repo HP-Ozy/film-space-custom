@@ -4,8 +4,9 @@ Blender > Scripting > open this file > Run Script. Then on the phone open
 http://localhost:8001/?blender (with `adb reverse tcp:8001 tcp:8001`) and press Camera.
 Every time you enter Camera mode on the phone, the motion is anchored to where the Blender camera is now.
 Timeline playing + Auto Keying on = the motion is keyframed. Run the script again to restart.
+The phone's 📷 button saves the camera view (as the 3D viewport shows it) to shots/ next to this script.
 """
-import bpy, json, math, os, threading
+import bpy, json, math, os, threading, time
 from functools import partial
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from mathutils import Quaternion, Vector
@@ -26,17 +27,20 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))
-        try:
-            d = json.loads(self.rfile.read(min(n, 4096)))
-            p, q = [float(v) for v in d["p"]], [float(v) for v in d["q"]]
-            mm = float(d["mm"])
-            if len(p) != 3 or len(q) != 4 or not all(map(math.isfinite, p + q + [mm])):
-                raise ValueError
-            latest.update(s=str(d["s"])[:32], p=Vector((p[0], -p[2], p[1])),
-                          q=Y_TO_Z @ Quaternion((q[3], q[0], q[1], q[2])), mm=min(max(mm, 1), 1000))
-            code = 204
-        except Exception:
-            code = 400
+        code = 204
+        if self.path == "/shot":
+            latest["shot"] = True
+        else:
+            try:
+                d = json.loads(self.rfile.read(min(n, 4096)))
+                p, q = [float(v) for v in d["p"]], [float(v) for v in d["q"]]
+                mm = float(d["mm"])
+                if len(p) != 3 or len(q) != 4 or not all(map(math.isfinite, p + q + [mm])):
+                    raise ValueError
+                latest.update(s=str(d["s"])[:32], p=Vector((p[0], -p[2], p[1])),
+                              q=Y_TO_Z @ Quaternion((q[3], q[0], q[1], q[2])), mm=min(max(mm, 1), 1000))
+            except Exception:
+                code = 400
         self.send_response(code)
         self.send_header("Content-Length", "0")
         self.end_headers()
@@ -58,9 +62,27 @@ def target_pose(d):
     return state["E_p"] + delta, rot
 
 
+def shot():
+    """Viewport render of the scene camera: viewport shading if a 3D view looks through the camera, else Solid."""
+    win = bpy.context.window_manager.windows[0]
+    area = next(a for a in win.screen.areas if a.type == "VIEW_3D")
+    region = next(r for r in area.regions if r.type == "WINDOW")
+    with bpy.context.temp_override(window=win, area=area, region=region):
+        bpy.ops.render.opengl(view_context=area.spaces.active.region_3d.view_perspective == "CAMERA")
+    path = os.path.join(DIR, "shots", time.strftime("shot-%Y%m%d-%H%M%S.png"))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    bpy.data.images["Render Result"].save_render(path)
+    print("Film Space Custom screenshot:", path)
+
+
 def tick():
     scn = bpy.context.scene
     cam = scn.camera
+    if latest.pop("shot", None) and cam:
+        try:
+            shot()
+        except Exception as e:  # an exception would unregister the timer and stop live tracking
+            print("Film Space Custom screenshot failed:", e)
     if not cam or "s" not in latest:
         return 1 / 60
     d = dict(latest)

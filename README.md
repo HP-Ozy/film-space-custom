@@ -22,7 +22,7 @@ Direct a virtual camera by physically moving your phone. You block a scene with 
 ## What it does
 
 - **Virtual studio** (`index.html`): 20 × 20 m checkerboard floor, 1 m grid, axes and 1.75 m human stand-ins. In **Edit** mode you orbit, zoom and pan the view, add, move, rotate and delete stand-ins, raise or lower the framing, and lock or return to a viewpoint. The layout is saved in the page URL.
-- **Camera mode**: on an Android phone (Chrome + ARCore), WebXR tracks the phone in 6DoF, the same kind of tracking as ARKit, and the virtual camera follows it. Real steps become real distances, and turning or tilting the phone aims the camera. On a PC the same mode uses WASD + mouse. Lenses: 35, 50, 75 and 200 mm (full frame). **Shoulder** places the camera at 1.5 m in the scene centre.
+- **Camera mode**: on an Android phone (Chrome + ARCore), WebXR tracks the phone in 6DoF, the same kind of tracking as ARKit, and the virtual camera follows it. Real steps become real distances, and turning or tilting the phone aims the camera. On a PC the same mode uses WASD + mouse. Lens: pinch with two fingers (or the mouse wheel) to zoom from 12 to 300 mm, or tap the lens button for 35, 50, 75 and 200 mm (full frame). 📷 takes a screenshot: a PNG on the phone, or with Blender live, the camera view saved by Blender in `shots/`. **Shoulder** places the camera at 1.5 m in the scene centre.
 - **Recording**: REC saves the rendered view as `.mp4` plus a `.json` file with the camera track (time, position, rotation, lens) and the stand-in layout.
 - **Blender import** (`film_space_import.py`): turns the `.json` into an animated camera (location, rotation and focal length on a 36 mm sensor, at the scene's FPS) plus stand-in figures.
 - **Blender live** (`film_space_live.py`): Blender serves the page to the phone and receives its pose about 60 times a second. It applies the pose to the active camera with smoothing, and records keyframes while the timeline plays with Auto Keying on.
@@ -45,7 +45,7 @@ Direct a virtual camera by physically moving your phone. You block a scene with 
    adb reverse tcp:8001 tcp:8001
    ```
 3. On the phone, open `http://localhost:8001/?blender` in Chrome.
-4. In Blender, look through the camera (Numpad 0). On the phone, press **Camera**: Blender's active camera starts from its current position and follows your steps and phone movements. The lens button also sets Blender's focal length.
+4. In Blender, look through the camera (Numpad 0). On the phone, press **Camera**: Blender's active camera starts from its current position and follows your steps and phone movements. Pinch zoom and the lens button also set Blender's focal length; 📷 saves Blender's camera view to `shots/`.
 5. To reposition, move the camera in Blender, then on the phone press **Edit** and **Camera** again: the motion re-anchors to the camera's new pose.
 6. To record a take, enable **Auto Keying** (●) and press **Play**: the motion is written as keyframes.
 
