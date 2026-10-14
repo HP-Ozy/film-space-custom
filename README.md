@@ -94,4 +94,4 @@ While the live script runs, Blender accepts connections on port 8001 from your l
 
 ## License
 
-Proprietary. Copyright (c) 2026 HP-Ozy. All rights reserved. The source is visible for reference only; any use requires a written licence from HP-Ozy. See [LICENSE](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE). Copyright (c) 2026 HP-Ozy.
